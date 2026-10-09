@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Blacka-Scholesa - Interaktywne Kompendium Wyceny Opcji | Lyceum</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- KaTeX for pristine client-side LaTeX rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Plotly.js for interactive quantitative charts -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#f8fafc] text-slate-900 antialiased min-h-screen">
+
+  <!-- ========================================================================= -->
+  <!-- PASEK GÓRNY (STICKY HEADER)                                              -->
+  <!-- ========================================================================= -->
+  <header id="stickyHeader" class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center text-lg shadow-sm shadow-blue-500/20">
+        🏛️
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Lyceum Quantitative Series</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-semibold text-slate-500">v2.4 Production</span>
+        </div>
+        <h1 class="text-sm font-bold text-slate-900 leading-none">Model Blacka-Scholesa-Mertona: Traktat Wyceny Opcji</h1>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-lg text-xs font-mono text-slate-600 border border-slate-200">
+        <span>Nagroda Nobla 1997</span>
+        <span class="text-slate-400">|</span>
+        <span class="text-emerald-700 font-semibold">Brak Arbitrażu</span>
+      </div>
+      <button onclick="window.print()" class="btn-secondary text-xs">
+        <span>🖨️ Drukuj / PDF</span>
+      </button>
+      <a href="../README.md" class="btn-primary text-xs">
+        <span>Indeks Lyceum</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- UKŁAD DWUKOLUMNOWY (SIDEBAR + GŁÓWNA TREŚĆ)                              -->
+  <!-- ========================================================================= -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex gap-8">
+
+    <!-- NAWIGACJA BOCZNA (TOC) -->
+    <aside class="hidden lg:block w-72 shrink-0">
+      <div class="sticky top-20 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
+          Nawigacja Traktatu
+        </div>
+
+        <nav class="space-y-1 text-xs">
+          <a href="#m1-intuicja" class="nav-link active">
+            <span class="font-mono text-slate-400 mr-1.5">01.</span> Intuicja i Ruch Browna
+          </a>
+          <a href="#m2-wyprowadzenie" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">02.</span> Wyprowadzenie PDE i Wzór
+          </a>
+          <a href="#m3-pricing" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">03.</span> Laboratorium Wyceny
+          </a>
+          <a href="#m4-grecy" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">04.</span> Geometria Greków
+          </a>
+          <a href="#m5-iv" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">05.</span> Zmienność Implikowana
+          </a>
+          <a href="#m6-strategie" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">06.</span> Strategie Opcjne P&L
+          </a>
+          <a href="#m7-quiz" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">07.</span> Sprawdzian Wiedzy (Quiz)
+          </a>
+          <a href="#m8-python" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">08.</span> Implementacja Python
+          </a>
+          <a href="#m9-zrodla" class="nav-link">
+            <span class="font-mono text-slate-400 mr-1.5">09.</span> Bibliografia i Rygor
+          </a>
+        </nav>
+
+        <div class="pt-4 border-t border-slate-100">
+          <div class="text-xs text-slate-500 font-mono mb-2">Szybkie Wskaźniki Modelu</div>
+          <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-1.5 text-[11px] font-mono">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Parity Drift:</span>
+              <span id="sidebarParityDrift" class="text-emerald-600 font-bold">0.0000 $</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Hedging Ratio:</span>
+              <span id="sidebarDeltaRatio" class="text-blue-600 font-bold">Δ = N(d₁)</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Pricing Engine:</span>
+              <span class="text-slate-700">Closed-Form BSM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- GŁÓWNA PRZESTRZEŃ DYDAKTYCZNA -->
+    <main class="flex-1 space-y-12 min-w-0">
+
+      <!-- ===================================================================== -->
+      <!-- HERO SECTION                                                          -->
+      <!-- ===================================================================== -->
+      <section class="saas-card-featured p-8 sm:p-10 border border-blue-100">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
+          <span>🏛️ Traktat Koncepcyjny Lyceum</span>
+          <span class="text-blue-300">•</span>
+          <span>Matematyka Finansowa & Stochastyka</span>
+        </div>
+
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          Wycena Opcji Europejskich Modelu Blacka-Scholesa-Mertona
+        </h1>
+
+        <p class="mt-3 text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
+          Interaktywny przewodnik matematyczny łączący stochastyczny ruch cen aktywów, dynamiczny hedging eliminujący ryzyko, analityczne rozwiązanie równania różniczkowego cząstkowego (PDE) oraz geometrię Greków i uśmiechu zmienności.
+        </p>
+
+        <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-slate-100">
+          <div class="p-3 bg-white rounded-xl border border-slate-200/60 shadow-xs">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Twórcy</div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">F. Black, M. Scholes, R. Merton</div>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-slate-200/60 shadow-xs">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Rok Publikacji</div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">1973 (Nobel 1997)</div>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-slate-200/60 shadow-xs">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Paradygmat</div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">Replikacja bez arbitrażu</div>
+          </div>
+          <div class="p-3 bg-white rounded-xl border border-slate-200/60 shadow-xs">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Proces Ceny</div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">Geometryczny Ruch Browna</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 1: INTUICJA STOCHASTYCZNA I RUCH BROWNA                         -->
+      <!-- ===================================================================== -->
+      <section id="m1-intuicja" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 01</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Intuicja Geometryczna: Jak porusza się cena akcji?</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200">
+            Monte Carlo Engine
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Zanim sformułujemy abstrakcyjne równania różniczkowe, musimy zrozumieć, skąd bierze się niepewność. Ceny akcji podlegają <strong>Geometrycznemu Ruchowi Browna (GBM)</strong>. Zakładamy, że względne stopy zwrotu składają się ze stałego trendu (dryfu $\mu$) oraz losowych zaburzeń białego szumu skalowanych zmiennością ($\sigma$):
+        </p>
+
+        <div class="callout-box">
+          <div class="font-mono text-sm text-blue-900 font-semibold mb-1">Stochastyczne Równanie Różniczkowe (SDE):</div>
+          <div class="text-base font-mono-math">
+            $$dS_t = \mu S_t dt + \sigma S_t dW_t$$
+          </div>
+          <p class="text-xs text-slate-600 mt-2">
+            Gdzie $W_t$ to proces Wienera (standardowy ruch Browna, $W_t \sim \mathcal{N}(0, t)$). Ponieważ cena akcji nie może spaść poniżej zera ($S_t > 0$), logarytm ceny $\ln(S_t)$ ma rozkład normalny, co oznacza, że sama cena $S_T$ ma <strong>rozkład log-normalny</strong> z asymetrycznym prawym ogonem.
+          </p>
+        </div>
+
+        <!-- COACHMARK UX -->
+        <div class="ux-hint">
+          <span class="text-lg">👉</span>
+          <div>
+            <strong>Jak z tego korzystać:</strong> 
+            Zmieniaj suwaki zmienności $\sigma$ oraz czasu $T$. Zauważ, jak przy wyższej zmienności wachlarz trajektorii rozszerza się, a dzwon rozkładu po prawej stronie spłaszcza się. Linia przerywana to cena wykonania $K$ (Strike). Zielone ścieżki kończą w cenie (ITM, zysk z opcji Call), a czerwone poza ceną (OTM).
+          </div>
+        </div>
+
+        <!-- SYMULATOR CANVAS MONTE CARLO -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-6">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Symulator 45 Trajektorii Czasu Ciągłego</h3>
+              <p class="text-xs text-slate-500">Prawa oś przedstawia teoretyczną gęstość rozkładu log-normalnego $p(S_T)$ w horyzoncie $T$.</p>
+            </div>
+            <button onclick="updateMonteCarlo()" class="btn-primary text-xs">
+              <span>🎲 Przelicz Nowe Ścieżki</span>
+            </button>
+          </div>
+
+          <div class="relative bg-white rounded-xl border border-slate-200 shadow-inner overflow-hidden">
+            <canvas id="mcCanvas" width="850" height="360" class="w-full h-[360px] block"></canvas>
+          </div>
+
+          <!-- KONTROLKI SUWAKÓW MODUŁU 1 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Cena Początkowa $S_0$:</span>
+                <span id="mcValS0" class="font-mono font-bold text-blue-600">100 $</span>
+              </div>
+              <input type="range" id="mcSliderS0" min="50" max="180" step="1" value="100" oninput="updateMonteCarlo()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Cena Wykonania $K$ (Strike):</span>
+                <span id="mcValK" class="font-mono font-bold text-amber-600">100 $</span>
+              </div>
+              <input type="range" id="mcSliderK" min="50" max="180" step="1" value="100" oninput="updateMonteCarlo()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Zmienność Roczna $\sigma$:</span>
+                <span id="mcValSigma" class="font-mono font-bold text-blue-600">25 %</span>
+              </div>
+              <input type="range" id="mcSliderSigma" min="0.05" max="0.80" step="0.01" value="0.25" oninput="updateMonteCarlo()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Oczekiwany Dryf $\mu$:</span>
+                <span id="mcValMu" class="font-mono font-bold text-slate-700">8 %</span>
+              </div>
+              <input type="range" id="mcSliderMu" min="-0.20" max="0.30" step="0.01" value="0.08" oninput="updateMonteCarlo()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Czas do Wygaśnięcia $T$:</span>
+                <span id="mcValT" class="font-mono font-bold text-slate-700">1.00 lat</span>
+              </div>
+              <input type="range" id="mcSliderT" min="0.1" max="2.5" step="0.05" value="1.0" oninput="updateMonteCarlo()">
+            </div>
+
+            <!-- PORÓWNANIE PROBABILISTYCZNE -->
+            <div class="bg-white p-3 rounded-xl border border-slate-200/80 flex flex-col justify-center">
+              <div class="text-[11px] font-mono text-slate-500 uppercase">Prawdopodobieństwo $S_T > K$</div>
+              <div class="flex items-center justify-between mt-1">
+                <span class="text-xs text-slate-600">Empiryczne (MC): <strong id="mcValEmpirical" class="font-mono text-emerald-600">--</strong></span>
+                <span class="text-xs text-slate-600">Analityczne $N(d_2)$: <strong id="mcValAnalytical" class="font-mono text-blue-600">--</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 2: WYPROWADZENIE FORMALNE PDE I ROZWIĄZANIE                     -->
+      <!-- ===================================================================== -->
+      <section id="m2-wyprowadzenie" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 02</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Rygor Formalny: Od Lematu Itô do Równania PDE</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-200">
+            Dowód Analityczny
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Geniusz Fischera Blacka, Myrona Scholesa i Roberta Mertona polegał na uświadomieniu sobie, że opcji nie wycenia się przez szacowanie przyszłego wzrostu spółki ($\mu$), lecz przez <strong>zbudowanie dynamicznie zrównoważonego portfela syntetycznego</strong>, w którym ryzyko rynkowe ulega całkowitej anihilacji.
+        </p>
+
+        <!-- KROKI DOWODU -->
+        <div class="space-y-4">
+          <!-- Krok 1 -->
+          <div class="p-5 bg-white border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-mono font-bold text-xs flex items-center justify-center">1</span>
+              <h4 class="text-sm font-bold text-slate-900">Rozwinięcie ceny opcji $V(S, t)$ z Lematu Itô</h4>
+            </div>
+            <p class="text-xs text-slate-600">
+              Niech $V(S, t)$ oznacza cenę opcji. Na mocy stochastycznego Lematu Itô dla funkcji dwóch zmiennych:
+            </p>
+            <div class="bg-slate-50 p-3 rounded-lg font-mono-math text-xs">
+              $$dV = \left(\frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2}\right)dt + \sigma S \frac{\partial V}{\partial S} dW_t$$
+            </div>
+          </div>
+
+          <!-- Krok 2 -->
+          <div class="p-5 bg-white border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-mono font-bold text-xs flex items-center justify-center">2</span>
+              <h4 class="text-sm font-bold text-slate-900">Konstrukcja Portfela Delta Hedging ($\Pi$)</h4>
+            </div>
+            <p class="text-xs text-slate-600">
+              Konstruujemy portfel składający się z jednej długiej opcji $V$ oraz krótkiej pozycji w $\Delta$ jednostkach akcji: $\Pi = V - \Delta S$. W nieskończenie małym przedziale czasu $dt$:
+            </p>
+            <div class="bg-slate-50 p-3 rounded-lg font-mono-math text-xs">
+              $$d\Pi = dV - \Delta dS = \left(\frac{\partial V}{\partial t} + \mu S \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - \Delta \mu S\right)dt + \left(\sigma S \frac{\partial V}{\partial S} - \Delta \sigma S\right)dW_t$$
+            </div>
+            <p class="text-xs text-slate-600 font-semibold text-blue-800">
+              Jeżeli wybierzemy $\Delta = \frac{\partial V}{\partial S}$ (współczynnik Delta), człon losowy $dW_t$ znika do zera! Portfel staje się całkowicie deterministyczny i bezryzykowny.
+            </p>
+          </div>
+
+          <!-- Krok 3 -->
+          <div class="p-5 bg-white border border-slate-200 rounded-xl space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-mono font-bold text-xs flex items-center justify-center">3</span>
+              <h4 class="text-sm font-bold text-slate-900">Zasada Braku Arbitrażu i Równanie Różniczkowe Cząstkowe (PDE)</h4>
+            </div>
+            <p class="text-xs text-slate-600">
+              Aby zapobiec darmowemu arbitrażowi na rynku, każdy portfel wolny od ryzyka musi generować stopę wolną od ryzyka $r$: $d\Pi = r \Pi dt$. Podstawiając $\Pi = V - \frac{\partial V}{\partial S} S$, otrzymujemy słynne <strong>równanie PDE Blacka-Scholesa</strong>:
+            </p>
+            <div class="bg-amber-50/70 border border-amber-200 p-4 rounded-xl font-mono-math text-sm text-center">
+              $$\frac{\partial V}{\partial t} + rS \frac{\partial V}{\partial S} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} - rV = 0$$
+            </div>
+            <div class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg">
+              <strong>Kluczowa konkluzja naukowa:</strong> Zwróć uwagę, że parametr oczekiwanego wzrostu akcji $\mu$ zniknął bez śladu. Cena godziwa opcji nie zależy od tego, czy inwestorzy są optymistami czy pesymistami co do spółki. Zależy wyłącznie od bieżącej ceny $S$, strike'a $K$, czasu $T$, stopy wolnej od ryzyka $r$ oraz zmienności $\sigma$.
+            </div>
+          </div>
+
+          <!-- Krok 4 -->
+          <div class="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 font-mono font-bold text-xs flex items-center justify-center">4</span>
+              <h4 class="text-sm font-bold text-slate-900">Zamknięte Wzory Analityczne (Closed-Form Formulas)</h4>
+            </div>
+            <p class="text-xs text-slate-600">
+              Rozwiązując powyższe równanie PDE z warunkami brzegowymi wypłaty przy wygaśnięciu $V(S, T) = \max(S-K, 0)$ dla Call oraz $\max(K-S, 0)$ dla Put, uzyskujemy:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-4 bg-blue-50/60 border border-blue-200 rounded-xl font-mono-math text-xs">
+                <div class="font-bold text-blue-900 text-sm mb-1 font-sans">Opcja Europejska Call ($C$):</div>
+                $$C(S, t) = S e^{-qT} N(d_1) - K e^{-rT} N(d_2)$$
+              </div>
+
+              <div class="p-4 bg-rose-50/60 border border-rose-200 rounded-xl font-mono-math text-xs">
+                <div class="font-bold text-rose-900 text-sm mb-1 font-sans">Opcja Europejska Put ($P$):</div>
+                $$P(S, t) = K e^{-rT} N(-d_2) - S e^{-qT} N(-d_1)$$
+              </div>
+            </div>
+
+            <div class="p-3 bg-slate-50 rounded-xl font-mono-math text-xs space-y-1">
+              <div>$$d_1 = \frac{\ln(S/K) + (r - q + \frac{1}{2}\sigma^2)T}{\sigma\sqrt{T}}$$</div>
+              <div>$$d_2 = d_1 - \sigma\sqrt{T} = \frac{\ln(S/K) + (r - q - \frac{1}{2}\sigma^2)T}{\sigma\sqrt{T}}$$</div>
+            </div>
+
+            <!-- PARYTET PUT-CALL -->
+            <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+              <div>
+                <strong class="text-emerald-900">Parytet Kupna-Sprzedaży (Put-Call Parity):</strong>
+                <span class="font-mono-math ml-2 text-emerald-800">$$C - P = S e^{-qT} - K e^{-rT}$$</span>
+              </div>
+              <span class="px-2 py-1 bg-white border border-emerald-300 rounded font-mono text-[11px] text-emerald-800">
+                Gwarant Braku Arbitrażu
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 3: INTERAKTYWNE LABORATORIUM WYCENY (PRICING LAB)                -->
+      <!-- ===================================================================== -->
+      <section id="m3-pricing" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 03</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Laboratorium Wyceny Opcji i Wartość Czasowa</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-200">
+            Kalkulator 60 FPS
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Manipuluj suwakami parametrów rynkowych, aby w czasie rzeczywistym obserwować krzywą wyceny Blacka-Scholesa ($t=0$) w zestawieniu z łamaną wartości wewnętrznej (payoff przy wygaśnięciu $t=T$).
+        </p>
+
+        <!-- UX COACHMARK -->
+        <div class="ux-hint">
+          <span class="text-lg">👉</span>
+          <div>
+            <strong>Jak z tego korzystać:</strong> 
+            Przesuwaj suwak czasu do wygaśnięcia $T$. Zwróć uwagę, jak krzywa wyceny Call (niebieska) zbliża się do łamanej wartości wewnętrznej (jasnoniebieska przerywana), gdy $T \to 0$. Ta różnica to <strong>wartość czasowa (Extrinsic Value)</strong>, która osiąga maksimum dokładnie dla opcji At-The-Money ($S = K$).
+          </div>
+        </div>
+
+        <!-- KPI TILES -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="kpi-card border-blue-200">
+            <span class="kpi-title text-blue-600">Cena Call ($C$)</span>
+            <span id="kpiCallPrice" class="kpi-value text-blue-700">--</span>
+            <span class="kpi-sub">
+              Wewn: <span id="kpiCallIntrinsic" class="font-mono">--</span> | Czas: <span id="kpiCallTimeVal" class="font-mono">--</span>
+            </span>
+          </div>
+
+          <div class="kpi-card border-rose-200">
+            <span class="kpi-title text-rose-600">Cena Put ($P$)</span>
+            <span id="kpiPutPrice" class="kpi-value text-rose-700">--</span>
+            <span class="kpi-sub">
+              Wewn: <span id="kpiPutIntrinsic" class="font-mono">--</span> | Czas: <span id="kpiPutTimeVal" class="font-mono">--</span>
+            </span>
+          </div>
+
+          <div class="kpi-card border-slate-200">
+            <span class="kpi-title text-slate-600">Parytet Put-Call</span>
+            <span id="kpiParityStatus" class="text-sm font-bold text-emerald-600 mt-2">Brak arbitrażu</span>
+            <span id="kpiParityDiff" class="kpi-sub font-mono">Δ = 0.000000 $</span>
+          </div>
+
+          <div class="kpi-card border-amber-200">
+            <span class="kpi-title text-amber-600">Moneyness ($S / K$)</span>
+            <span id="kpiMoneyness" class="kpi-value text-amber-700">1.00</span>
+            <span class="kpi-sub">At-The-Money (ATM)</span>
+          </div>
+        </div>
+
+        <!-- KONTROLKI SUWAKÓW -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Bieżąca Cena Aktywów $S$:</span>
+                <span id="labValS" class="font-mono font-bold text-blue-600">100 $</span>
+              </div>
+              <input type="range" id="labSliderS" min="20" max="220" step="1" value="100" oninput="updatePricingLab()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Cena Wykonania $K$ (Strike):</span>
+                <span id="labValK" class="font-mono font-bold text-amber-600">100 $</span>
+              </div>
+              <input type="range" id="labSliderK" min="20" max="220" step="1" value="100" oninput="updatePricingLab()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Czas do Wygaśnięcia $T$:</span>
+                <span id="labValT" class="font-mono font-bold text-slate-800">1.00 L (365 dni)</span>
+              </div>
+              <input type="range" id="labSliderT" min="0.02" max="2.5" step="0.02" value="1.0" oninput="updatePricingLab()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Stopa Wolna od Ryzyka $r$:</span>
+                <span id="labValR" class="font-mono font-bold text-slate-800">5.0 %</span>
+              </div>
+              <input type="range" id="labSliderR" min="0.00" max="0.15" step="0.005" value="0.05" oninput="updatePricingLab()">
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="text-slate-600 font-medium">Zmienność Implikowana $\sigma$:</span>
+                <span id="labValSigma" class="font-mono font-bold text-blue-600">20 %</span>
+              </div>
+              <input type="range" id="labSliderSigma" min="0.05" max="0.90" step="0.01" value="0.20" oninput="updatePricingLab()">
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-4">
+              <button onclick="document.getElementById('labSliderS').value=100; document.getElementById('labSliderK').value=100; updatePricingLab();" class="btn-secondary text-xs">
+                ↺ Resetuj do ATM (100$)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WYKRES PLOTLY -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-inner">
+          <div id="pricingPlot" style="height: 400px; width: 100%;"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 4: GEOMETRIA GREKÓW (THE GREEKS DEEP DIVE)                       -->
+      <!-- ===================================================================== -->
+      <section id="m4-grecy" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 04</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Geometria Wrażliwości: Grecy i Ryzyko Gamma Pin</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200">
+            Pochodne Cząstkowe
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Wycena pojedynczej liczby to za mało dla tradera czy instytucji. Grecy mierzą tempo zmian ceny opcji względem poszczególnych wymiarów rynku: ceny akcji ($S$), krzywizny, zmienności ($\sigma$), upływu czasu ($t$) oraz stopy procentowej ($r$).
+        </p>
+
+        <!-- KARTY STATYSTYK GREKÓW W BIEŻĄCYM PUNKCIE -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Delta Call ($\Delta_C$)</div>
+            <div id="valGreekDeltaCall" class="text-lg font-mono font-bold text-blue-600 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">$\partial C / \partial S$</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Delta Put ($\Delta_P$)</div>
+            <div id="valGreekDeltaPut" class="text-lg font-mono font-bold text-rose-600 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">$\Delta_C - 1$</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Gamma ($\Gamma$)</div>
+            <div id="valGreekGamma" class="text-lg font-mono font-bold text-purple-600 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">$\partial^2 V / \partial S^2$</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Vega ($\nu$)</div>
+            <div id="valGreekVega" class="text-lg font-mono font-bold text-emerald-600 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">za 1% $\sigma$</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Theta Call ($\Theta$)</div>
+            <div id="valGreekThetaCall" class="text-lg font-mono font-bold text-amber-600 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">erozja / dzień</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-xl">
+            <div class="text-[11px] font-mono uppercase text-slate-400">Rho Call ($\rho$)</div>
+            <div id="valGreekRhoCall" class="text-lg font-mono font-bold text-slate-700 mt-0.5">--</div>
+            <div class="text-[10px] text-slate-400">za 1% $r$</div>
+          </div>
+        </div>
+
+        <!-- UX COACHMARK -->
+        <div class="ux-hint">
+          <span class="text-lg">👉</span>
+          <div>
+            <strong>Jak z tego korzystać:</strong> 
+            Kliknij zakładkę <strong>Gamma</strong> poniżej. Wykres przedstawia Gammę dla 3 różnych horyzontów: 14 dni (czerwona), 60 dni (niebieska) oraz bieżący $T$ (zielona). Zaobserwuj, jak dla 14-dniowej opcji tuż przy $S = 100$ (ATM) Gamma wystrzela w górę. To jest <strong>Gamma Pin Risk</strong> - koszmar animatorów rynku w piątek przed wygaśnięciem serii.
+          </div>
+        </div>
+
+        <!-- PRZEŁĄCZNIK GREKÓW -->
+        <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+          <span class="text-xs font-semibold text-slate-500 mr-2">Wybierz Greka:</span>
+          <button class="tab-btn greek-tab-btn active" data-greek="delta" onclick="setGreekTab('delta')">Delta Call (Δ)</button>
+          <button class="tab-btn greek-tab-btn" data-greek="deltaPut" onclick="setGreekTab('deltaPut')">Delta Put (Δ)</button>
+          <button class="tab-btn greek-tab-btn" data-greek="gamma" onclick="setGreekTab('gamma')">Gamma (Γ - Krzywizna)</button>
+          <button class="tab-btn greek-tab-btn" data-greek="vega" onclick="setGreekTab('vega')">Vega (ν - Zmienność)</button>
+          <button class="tab-btn greek-tab-btn" data-greek="theta" onclick="setGreekTab('theta')">Theta (Θ - Upływ Czasu)</button>
+          <button class="tab-btn greek-tab-btn" data-greek="rho" onclick="setGreekTab('rho')">Rho (ρ - Stopy)</button>
+        </div>
+
+        <!-- WYKRES GREKÓW -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-inner">
+          <div id="greeksPlot" style="height: 380px; width: 100%;"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 5: ZMIENNOŚĆ IMPLIKOWANA & SMILE                                -->
+      <!-- ===================================================================== -->
+      <section id="m5-iv" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 05</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Odwracanie Modelu: Zmienność Implikowana i Volatility Smile</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200">
+            Algorytm Newtona-Raphsona
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          W rzeczywistości rynkowej nie znamy zmienności $\sigma$. Widzimy natomiast cenę rynkową opcji $C_{\text{mkt}}$. Zmienność implikowana to wartość $\sigma$, która podstawiona do wzoru Blacka-Scholesa daje dokładnie cenę rynkową. Ponieważ wzoru nie da się odwrócić analitycznie, stosuje się numeryczną metodę <strong>Newtona-Raphsona</strong>, gdzie pochodną po zmienności jest dokładnie Vega:
+        </p>
+
+        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl font-mono-math text-xs text-center">
+          $$\sigma_{n+1} = \sigma_n - \frac{C_{\text{BS}}(\sigma_n) - C_{\text{mkt}}}{\text{Vega}(\sigma_n)}$$
+        </div>
+
+        <!-- INTERAKTYWNY KALKULATOR IV -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900">Solwer Zmienności Implikowanej</h3>
+
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-slate-600 font-medium mb-1">Cena Rynkowa Opcji ($C_{\text{mkt}}$):</label>
+                <input type="number" id="ivInputPrice" value="10.45" step="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:border-blue-500 focus:outline-none">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-600 font-medium mb-1">Typ Opcji:</label>
+                  <select id="ivSelectType" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs">
+                    <option value="call">Call</option>
+                    <option value="put">Put</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-slate-600 font-medium mb-1">Strike $K$ ($):</label>
+                  <input type="number" id="ivInputK" value="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-slate-600 font-medium mb-1">Cena $S$:</label>
+                  <input type="number" id="ivInputS" value="100" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg font-mono text-xs">
+                </div>
+                <div>
+                  <label class="block text-slate-600 font-medium mb-1">Czas $T$ (L):</label>
+                  <input type="number" id="ivInputT" value="1.0" step="0.1" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg font-mono text-xs">
+                </div>
+                <div>
+                  <label class="block text-slate-600 font-medium mb-1">Stopa $r$ (%):</label>
+                  <input type="number" id="ivInputR" value="5.0" step="0.5" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg font-mono text-xs">
+                </div>
+              </div>
+
+              <button onclick="solveImpliedVol()" class="btn-primary w-full justify-center text-xs mt-2">
+                ⚡ Oblicz Zmienność Implikowaną (IV)
+              </button>
+            </div>
+
+            <div id="ivResultText" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              Kliknij przycisk powyżej, aby uruchomić algorytm iteracyjny.
+            </div>
+          </div>
+
+          <!-- TABELA ITERACJI NEWTONA -->
+          <div class="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
+                  Ścieżka Zbieżności Newtona-Raphsona
+                </h4>
+                <span class="text-[11px] text-slate-400 font-mono">Tolerancja: 1e-5</span>
+              </div>
+              <div class="overflow-x-auto max-h-[190px] border border-slate-100 rounded-xl">
+                <table class="w-full text-[11px] text-left">
+                  <thead class="bg-slate-50 text-slate-500 font-mono border-b border-slate-200">
+                    <tr>
+                      <th class="py-1.5 px-3">Krok</th>
+                      <th class="py-1.5 px-3">Przybliżenie $\sigma$</th>
+                      <th class="py-1.5 px-3">Cena BS</th>
+                      <th class="py-1.5 px-3">Błąd ($C - C_{\text{mkt}}$)</th>
+                      <th class="py-1.5 px-3">Vega</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ivTableBody">
+                    <!-- Dynamiczne wiersze -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- WYKRES VOLATILITY SMILE -->
+            <div class="pt-3 border-t border-slate-100">
+              <div class="text-xs font-semibold text-slate-700 mb-2">
+                Rzeczywisty Uśmiech Zmienności (Volatility Smile & Skew)
+              </div>
+              <div id="volSmilePlot" style="height: 220px; width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 6: STRATEGIE OPCYJNE I P&L                                      -->
+      <!-- ===================================================================== -->
+      <section id="m6-strategie" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 06</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Profiler Strategii Opcyjnych: Payoff i Krzywa Wyceny</h2>
+          </div>
+          <span class="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-200">
+            P&L Simulator
+          </span>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Kombinacje opcji pozwalają tworzyć dowolne profile ryzyka i zwrotu. Zobacz różnicę między wypłatą w dniu wygaśnięcia ($T$, czarna linia) a bieżącym wynikiem portfela w ujęciu Blacka-Scholesa ($t=0$, niebieska przerywana).
+        </p>
+
+        <!-- TAB BUTTONS STRATEGII -->
+        <div class="flex flex-wrap gap-2">
+          <button class="tab-btn strat-tab-btn" data-strat="longCall" onclick="setStrategy('longCall')">Long Call</button>
+          <button class="tab-btn strat-tab-btn" data-strat="longPut" onclick="setStrategy('longPut')">Long Put</button>
+          <button class="tab-btn strat-tab-btn" data-strat="coveredCall" onclick="setStrategy('coveredCall')">Covered Call</button>
+          <button class="tab-btn strat-tab-btn" data-strat="protectivePut" onclick="setStrategy('protectivePut')">Protective Put</button>
+          <button class="tab-btn strat-tab-btn active" data-strat="straddle" onclick="setStrategy('straddle')">Straddle (Stelaż ATM)</button>
+          <button class="tab-btn strat-tab-btn" data-strat="strangle" onclick="setStrategy('strangle')">Strangle (Strumień OTM)</button>
+          <button class="tab-btn strat-tab-btn" data-strat="bullCallSpread" onclick="setStrategy('bullCallSpread')">Bull Call Spread</button>
+          <button class="tab-btn strat-tab-btn" data-strat="ironCondor" onclick="setStrategy('ironCondor')">Iron Condor</button>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-inner">
+          <div id="strategyPlot" style="height: 380px; width: 100%;"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 7: QUIZ ZROZUMIENIA (PhD STANDARD)                              -->
+      <!-- ===================================================================== -->
+      <section id="m7-quiz" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 07</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Sprawdzian Zrozumienia Koncepcji</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500 font-medium">Twój wynik:</span>
+            <span id="quizScoreBadge" class="px-3 py-1 bg-blue-100 text-blue-800 font-mono font-bold text-xs rounded-full">
+              0 / 5
+            </span>
+          </div>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Poniższy zestaw pytań weryfikuje dogłębne zrozumienie mechaniki Blacka-Scholesa i pozwala wyłapać powszechne pułapki myślowe.
+        </p>
+
+        <!-- KONTENER NA PYTANIA -->
+        <div id="quizContainer" class="space-y-6">
+          <!-- Wstrzykiwane przez JS -->
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button onclick="initQuiz()" class="btn-secondary text-xs">
+            ↺ Rozwiąż Quiz Ponownie
+          </button>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 8: PRODUKCYJNY KOD W PYTHONIE                                   -->
+      <!-- ===================================================================== -->
+      <section id="m8-python" class="saas-card p-8 scroll-mt-24 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">Moduł 08</span>
+            <h2 class="text-2xl font-bold text-slate-900 mt-0.5">Praktyczna Implementacja w Pythonie (NumPy / SciPy)</h2>
+          </div>
+          <button id="btnCopyPython" onclick="copyPythonCode()" class="btn-primary text-xs">
+            <span>📋 Kopiuj Kod</span>
+          </button>
+        </div>
+
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Poniższy skrypt przedstawia kompletny, produkcyjny moduł wyceny opcji, analitycznych Greków oraz solwera zmienności implikowanej gotowy do wklejenia w systemie quant tradingowym.
+        </p>
+
+        <div class="relative bg-slate-900 text-slate-100 p-6 rounded-2xl font-mono text-xs overflow-x-auto shadow-xl leading-relaxed">
+<pre id="pythonCodeSnippet"><code>import numpy as np
+from scipy.stats import norm
+
+class BlackScholesEngine:
+    """
+    Wycena opcji europejskich i obliczanie Greków w standardzie Blacka-Scholesa-Mertona (1973).
+    Obsługuje również ciągłą stopę dywidendy q (Merton 1973).
+    """
+    def __init__(self, S: float, K: float, T: float, r: float, sigma: float, q: float = 0.0):
+        self.S = float(S)
+        self.K = float(K)
+        self.T = float(T)
+        self.r = float(r)
+        self.sigma = float(sigma)
+        self.q = float(q)
+
+    def _d1_d2(self):
+        sqrt_T = np.sqrt(self.T)
+        d1 = (np.log(self.S / self.K) + (self.r - self.q + 0.5 * self.sigma ** 2) * self.T) / (self.sigma * sqrt_T)
+        d2 = d1 - self.sigma * sqrt_T
+        return d1, d2
+
+    def price(self, option_type: str = "call") -> float:
+        d1, d2 = self._d1_d2()
+        disc_r = np.exp(-self.r * self.T)
+        disc_q = np.exp(-self.q * self.T)
+        
+        if option_type.lower() == "call":
+            return self.S * disc_q * norm.cdf(d1) - self.K * disc_r * norm.cdf(d2)
+        elif option_type.lower() == "put":
+            return self.K * disc_r * norm.cdf(-d2) - self.S * disc_q * norm.cdf(-d1)
+        raise ValueError("option_type must be 'call' or 'put'")
+
+    def greeks(self) -> dict:
+        d1, d2 = self._d1_d2()
+        sqrt_T = np.sqrt(self.T)
+        disc_r = np.exp(-self.r * self.T)
+        disc_q = np.exp(-self.q * self.T)
+        pdf_d1 = norm.pdf(d1)
+
+        delta_call = disc_q * norm.cdf(d1)
+        delta_put = disc_q * (norm.cdf(d1) - 1.0)
+        gamma = (disc_q * pdf_d1) / (self.S * self.sigma * sqrt_T)
+        vega = self.S * disc_q * sqrt_T * pdf_d1 * 0.01  # za 1 p.p. sigma
+
+        theta_term = -(self.S * disc_q * pdf_d1 * self.sigma) / (2 * sqrt_T)
+        theta_call = (theta_term - self.r * self.K * disc_r * norm.cdf(d2) + self.q * self.S * disc_q * norm.cdf(d1)) / 365.0
+        theta_put = (theta_term + self.r * self.K * disc_r * norm.cdf(-d2) - self.q * self.S * disc_q * norm.cdf(-d1)) / 365.0
+
+        rho_call = (self.K * self.T * disc_r * norm.cdf(d2)) * 0.01
+        rho_put = (-self.K * self.T * disc_r * norm.cdf(-d2)) * 0.01
+
+        return {
+            "delta_call": delta_call, "delta_put": delta_put,
+            "gamma": gamma, "vega": vega,
+            "theta_call_daily": theta_call, "theta_put_daily": theta_put,
+            "rho_call": rho_call, "rho_put": rho_put
+        }
+
+    @staticmethod
+    def implied_volatility(target_price: float, S: float, K: float, T: float, r: float, 
+                           option_type: str = "call", q: float = 0.0, tol: float = 1e-6, max_iter: int = 100) -> float:
+        sigma = 0.25  # punkt początkowy
+        for _ in range(max_iter):
+            bs = BlackScholesEngine(S, K, T, r, sigma, q)
+            price = bs.price(option_type)
+            diff = price - target_price
+            if abs(diff) < tol:
+                return sigma
+            vega = bs.greeks()["vega"] * 100.0  # raw vega
+            if vega < 1e-8:
+                break
+            sigma -= diff / vega
+            sigma = max(1e-4, min(sigma, 5.0))
+        return sigma
+
+# Przykład użycia:
+if __name__ == "__main__":
+    bs = BlackScholesEngine(S=100.0, K=100.0, T=1.0, r=0.05, sigma=0.20)
+    print(f"Cena Call: {bs.price('call'):.4f} USD")
+    print(f"Cena Put:  {bs.price('put'):.4f} USD")
+    print("Grecy:", bs.greeks())
+    iv = BlackScholesEngine.implied_volatility(target_price=10.4506, S=100, K=100, T=1.0, r=0.05)
+    print(f"Odzyskana Zmienność Implikowana: {iv*100:.2f}%")
+</code></pre>
+        </div>
+      </section>
+
+      <!-- ===================================================================== -->
+      <!-- MODUŁ 9: ŹRÓDŁA I BIBLIOGRAFIA NAUKOWA                                -->
+      <!-- ===================================================================== -->
+      <section id="m9-zrodla" class="saas-card p-8 scroll-mt-24 space-y-4">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Moduł 09</span>
+        <h2 class="text-xl font-bold text-slate-900">Bibliografia & Rygor Naukowy</h2>
+
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Kluczowe publikacje leżące u podstaw współczesnej teorii inżynierii finansowej:
+        </p>
+
+        <ul class="text-xs text-slate-600 space-y-2.5 list-disc list-inside">
+          <li>
+            <strong>Black, F., & Scholes, M. (1973).</strong> <em>The Pricing of Options and Corporate Liabilities.</em> Journal of Political Economy, 81(3), 637-654.
+          </li>
+          <li>
+            <strong>Merton, R. C. (1973).</strong> <em>Theory of Rational Option Pricing.</em> Bell Journal of Economics and Management Science, 4(1), 141-183.
+          </li>
+          <li>
+            <strong>Hull, J. C. (2018).</strong> <em>Options, Futures, and Other Derivatives</em> (10th ed.). Pearson Education.
+          </li>
+          <li>
+            <strong>Wilmott, P. (2006).</strong> <em>Paul Wilmott on Quantitative Finance.</em> John Wiley & Sons.
+          </li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- STOPKA STRONY -->
+  <footer class="mt-20 border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500 font-mono">
+    Lyceum Quantitative Series • Model Blacka-Scholesa • Samowystarczalna Architektura SPA
+  </footer>
+
+  <!-- SKRYPT APLIKACJI -->
+  <script src="app.js"></script>
+</body>
+</html>
