@@ -189,91 +189,25 @@ function generateMonteCarloPaths() {
   }
 }
 
-function drawMonteCarloCanvas() {
-  const canvas = document.getElementById("mcCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Marginesy
-  const padLeft = 55;
-  const padRight = 110;
-  const padTop = 30;
-  const padBottom = 40;
-  const plotW = w - padLeft - padRight;
-  const plotH = h - padTop - padBottom;
-
-  // Znajdź min/max cen
-  let minS = mcState.S0 * 0.5;
-  let maxS = mcState.S0 * 1.8;
-  for (const path of mcState.paths) {
-    for (const val of path) {
-      if (val < minS) minS = Math.max(1, val);
-      if (val > maxS) maxS = val;
-    }
-  }
-  // Zaokrąglenie zakresu
-  minS = Math.floor(minS * 0.9);
-  maxS = Math.ceil(maxS * 1.1);
-  if (minS >= maxS) maxS = minS + 50;
-
-  const toX = (step) => padLeft + (step / mcState.steps) * plotW;
-  const toY = (price) => padTop + plotH - ((price - minS) / (maxS - minS)) * plotH;
-
-  // Siatka pozioma i pionowa
-  ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 1;
-
-  ctx.beginPath();
-  const numGridY = 5;
-  for (let i = 0; i <= numGridY; i++) {
-    const priceVal = minS + (i / numGridY) * (maxS - minS);
-    const y = toY(priceVal);
-    ctx.moveTo(padLeft, y);
-    ctx.lineTo(padLeft + plotW, y);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "11px 'JetBrains Mono'";
-    ctx.textAlign = "right";
-    ctx.fillText(priceVal.toFixed(0) + " $", padLeft - 8, y + 4);
+function renderMonteCarloPlot() {
+  const plotDiv = document.getElementById("mcPlot");
+  if (!plotDiv) return;
+  if (typeof Plotly === "undefined") {
+    setTimeout(renderMonteCarloPlot, 60);
+    return;
   }
 
-  const numGridX = 4;
-  for (let i = 0; i <= numGridX; i++) {
-    const timeVal = (i / numGridX) * mcState.T;
-    const x = padLeft + (i / numGridX) * plotW;
-    ctx.moveTo(x, padTop);
-    ctx.lineTo(x, padTop + plotH);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "11px 'JetBrains Mono'";
-    ctx.textAlign = "center";
-    ctx.fillText(timeVal.toFixed(2) + " L", x, padTop + plotH + 20);
+  const dt = mcState.T / mcState.steps;
+  const timeArr = [];
+  for (let s = 0; s <= mcState.steps; s++) {
+    timeArr.push(s * dt);
   }
-  ctx.stroke();
 
-  // Linia ceny wykonania K (Strike)
-  const strikeY = toY(mcState.K);
-  ctx.save();
-  ctx.strokeStyle = "#d97706";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([5, 4]);
-  ctx.beginPath();
-  ctx.moveTo(padLeft, strikeY);
-  ctx.lineTo(padLeft + plotW, strikeY);
-  ctx.stroke();
-  ctx.restore();
-
-  // Etykieta Strike K
-  ctx.fillStyle = "#d97706";
-  ctx.font = "bold 11px 'Plus Jakarta Sans'";
-  ctx.textAlign = "left";
-  ctx.fillText("Strike K = " + mcState.K + " $", padLeft + 10, strikeY - 6);
-
-  // Rysowanie ścieżek
-  const visibleSteps = Math.floor(mcState.steps * mcState.progress);
+  // 1. Ścieżki Monte Carlo (wektorowe krzywe SVG)
+  const traces = [];
   let itmCount = 0;
+  let hasLegendITM = false;
+  let hasLegendOTM = false;
 
   for (let p = 0; p < mcState.paths.length; p++) {
     const path = mcState.paths[p];
@@ -281,74 +215,195 @@ function drawMonteCarloCanvas() {
     const isITM = finalVal >= mcState.K;
     if (isITM) itmCount++;
 
-    ctx.beginPath();
-    ctx.strokeStyle = isITM ? "rgba(5, 150, 105, 0.45)" : "rgba(225, 29, 72, 0.35)";
-    ctx.lineWidth = 1.5;
+    const showInLegend = (isITM && !hasLegendITM) || (!isITM && !hasLegendOTM);
+    if (isITM && !hasLegendITM) hasLegendITM = true;
+    if (!isITM && !hasLegendOTM) hasLegendOTM = true;
 
-    for (let s = 0; s <= visibleSteps; s++) {
-      const x = toX(s);
-      const y = toY(path[s]);
-      if (s === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+    traces.push({
+      x: timeArr,
+      y: path,
+      mode: "lines",
+      name: isITM ? "Ścieżki ITM (W zysku)" : "Ścieżki OTM (Poza ceną)",
+      showlegend: showInLegend,
+      line: {
+        color: isITM ? "rgba(5, 150, 105, 0.40)" : "rgba(225, 29, 72, 0.32)",
+        width: 1.4
+      },
+      hoverinfo: "y+x",
+      xaxis: "x",
+      yaxis: "y"
+    });
   }
 
-  // Prawa strefa: Dzwon rozkładu gęstości log-normalnej w czasie T
-  const rightXStart = padLeft + plotW + 10;
-  const distW = padRight - 20;
+  // 2. Teoretyczna ścieżka oczekiwana E[S_t] = S0 * exp(mu * t)
+  const expectedPath = timeArr.map(t => mcState.S0 * Math.exp(mcState.mu * t));
+  traces.push({
+    x: timeArr,
+    y: expectedPath,
+    mode: "lines",
+    name: "Średnia Teoretyczna E[S_t]",
+    line: {
+      color: "#0f172a",
+      width: 2.2,
+      dash: "dash"
+    },
+    xaxis: "x",
+    yaxis: "y"
+  });
 
-  // Obliczenie parametrów log-normalnych w T
+  // 3. Rozkład Log-Normalny w czasie T (Prawa oś / Subplot 2)
   const mu_ln = Math.log(mcState.S0) + (mcState.mu - 0.5 * mcState.sigma * mcState.sigma) * mcState.T;
   const sigma_ln = mcState.sigma * Math.sqrt(mcState.T);
 
-  ctx.beginPath();
-  let maxDensity = 0;
-  const samples = 60;
-  const densities = [];
+  // Zakres cenowy
+  let allPrices = [mcState.S0, mcState.K];
+  for (const p of mcState.paths) {
+    allPrices.push(p[0], p[p.length - 1]);
+  }
+  const minPrice = Math.max(5, Math.min(...allPrices) * 0.7);
+  const maxPrice = Math.max(...allPrices) * 1.25;
 
-  for (let i = 0; i <= samples; i++) {
-    const priceVal = minS + (i / samples) * (maxS - minS);
-    if (priceVal <= 0) {
-      densities.push(0);
-      continue;
+  const stepsDens = 120;
+  const yOTM = [], xOTM = [];
+  const yITM = [], xITM = [];
+
+  for (let i = 0; i <= stepsDens; i++) {
+    const s = minPrice + (i / stepsDens) * (maxPrice - minPrice);
+    const z = (Math.log(s) - mu_ln) / sigma_ln;
+    const density = (1.0 / (s * sigma_ln * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
+
+    if (s <= mcState.K) {
+      yOTM.push(s);
+      xOTM.push(density);
+    } else {
+      yITM.push(s);
+      xITM.push(density);
     }
-    const logVal = Math.log(priceVal);
-    const z = (logVal - mu_ln) / sigma_ln;
-    const dens = (1.0 / (priceVal * sigma_ln * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
-    densities.push(dens);
-    if (dens > maxDensity) maxDensity = dens;
   }
 
-  // Rysowanie krzywej gęstości
-  ctx.save();
-  ctx.beginPath();
-  for (let i = 0; i <= samples; i++) {
-    const priceVal = minS + (i / samples) * (maxS - minS);
-    const y = toY(priceVal);
-    const wBar = maxDensity > 0 ? (densities[i] / maxDensity) * distW : 0;
-    const x = rightXStart + wBar;
-
-    if (i === 0) ctx.moveTo(rightXStart, y);
-    else ctx.lineTo(x, y);
+  // Punkt graniczny Strike K dla ciągłości
+  if (yOTM.length > 0 && yITM.length > 0) {
+    const zK = (Math.log(mcState.K) - mu_ln) / sigma_ln;
+    const densK = (1.0 / (mcState.K * sigma_ln * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * zK * zK);
+    yOTM.push(mcState.K);
+    xOTM.push(densK);
+    yITM.unshift(mcState.K);
+    xITM.unshift(densK);
   }
-  ctx.lineTo(rightXStart, toY(maxS));
-  ctx.closePath();
 
-  ctx.fillStyle = "rgba(37, 99, 235, 0.12)";
-  ctx.fill();
-  ctx.strokeStyle = "#2563eb";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
+  // Trace OTM (rozkład)
+  traces.push({
+    x: xOTM,
+    y: yOTM,
+    mode: "lines",
+    name: "Gęstość OTM (Strata)",
+    fill: "tozerox",
+    fillcolor: "rgba(225, 29, 72, 0.20)",
+    line: { color: "#e11d48", width: 2 },
+    xaxis: "x2",
+    yaxis: "y2",
+    hoverinfo: "y+x"
+  });
 
-  // Etykieta rozkładu
-  ctx.fillStyle = "#2563eb";
-  ctx.font = "10px 'JetBrains Mono'";
-  ctx.textAlign = "center";
-  ctx.fillText("p(S_T)", rightXStart + distW / 2, padTop - 10);
+  // Trace ITM (rozkład)
+  traces.push({
+    x: xITM,
+    y: yITM,
+    mode: "lines",
+    name: "Gęstość ITM (Zysk Call)",
+    fill: "tozerox",
+    fillcolor: "rgba(5, 150, 105, 0.25)",
+    line: { color: "#059669", width: 2 },
+    xaxis: "x2",
+    yaxis: "y2",
+    hoverinfo: "y+x"
+  });
 
-  // Aktualizacja wskaźnika empirycznego vs analitycznego N(d2)
+  const layout = {
+    title: false,
+    margin: { t: 45, r: 25, b: 45, l: 60 },
+    hovermode: "closest",
+    legend: {
+      orientation: "h",
+      y: 1.16,
+      x: 0,
+      font: { family: "Plus Jakarta Sans", size: 10 }
+    },
+    xaxis: {
+      domain: [0, 0.77],
+      title: "Czas do wygaśnięcia t (Lata)",
+      showgrid: true,
+      gridcolor: "#f1f5f9",
+      zeroline: false
+    },
+    xaxis2: {
+      domain: [0.81, 1.0],
+      title: "Rozkład p(S_T)",
+      showgrid: true,
+      gridcolor: "#f1f5f9",
+      showticklabels: false,
+      zeroline: false
+    },
+    yaxis: {
+      title: "Cena aktywów bazowych S ($)",
+      showgrid: true,
+      gridcolor: "#f1f5f9",
+      zeroline: false
+    },
+    yaxis2: {
+      anchor: "x2",
+      matches: "y",
+      showticklabels: false,
+      showgrid: true,
+      gridcolor: "#f1f5f9",
+      zeroline: false
+    },
+    shapes: [
+      // Linia Strike K na lewym wykresie
+      {
+        type: "line",
+        x0: 0,
+        x1: mcState.T,
+        y0: mcState.K,
+        y1: mcState.K,
+        xref: "x",
+        yref: "y",
+        line: { color: "#d97706", width: 2, dash: "dot" }
+      },
+      // Linia Strike K na prawym wykresie
+      {
+        type: "line",
+        x0: 0,
+        x1: 1,
+        y0: mcState.K,
+        y1: mcState.K,
+        xref: "x2 domain",
+        yref: "y2",
+        line: { color: "#d97706", width: 2, dash: "dot" }
+      }
+    ],
+    annotations: [
+      {
+        x: mcState.T * 0.03,
+        y: mcState.K,
+        xref: "x",
+        yref: "y",
+        text: "Strike K=" + mcState.K + " $",
+        showarrow: false,
+        yshift: 12,
+        font: { color: "#d97706", size: 11, family: "JetBrains Mono", weight: "bold" },
+        bgcolor: "rgba(255, 255, 255, 0.85)",
+        bordercolor: "rgba(217, 119, 6, 0.3)",
+        borderwidth: 1,
+        borderpad: 3
+      }
+    ]
+  };
+
+  const config = { responsive: true, displayModeBar: false };
+  Plotly.react(plotDiv, traces, layout, config);
+
+  // Aktualizacja prawdopodobieństwa empirycznego vs analitycznego N(d2)
   const empProb = (itmCount / mcState.numPaths) * 100;
   const { d2 } = calculateD1D2(mcState.S0, mcState.K, mcState.T, mcState.mu, mcState.sigma);
   const anaProb = normCdf(d2) * 100;
@@ -373,8 +428,21 @@ function updateMonteCarlo() {
   document.getElementById("mcValK").innerText = mcState.K + " $";
 
   generateMonteCarloPaths();
-  mcState.progress = 1.0;
-  drawMonteCarloCanvas();
+
+  let itmCount = 0;
+  for (const p of mcState.paths) {
+    if (p[p.length - 1] >= mcState.K) itmCount++;
+  }
+  const empProb = (itmCount / mcState.numPaths) * 100;
+  const { d2 } = calculateD1D2(mcState.S0, mcState.K, mcState.T, mcState.mu, mcState.sigma);
+  const anaProb = normCdf(d2) * 100;
+
+  const elEmp = document.getElementById("mcValEmpirical");
+  const elAna = document.getElementById("mcValAnalytical");
+  if (elEmp) elEmp.innerText = empProb.toFixed(1) + "%";
+  if (elAna) elAna.innerText = anaProb.toFixed(1) + "%";
+
+  renderMonteCarloPlot();
 }
 
 // ==========================================
@@ -1140,35 +1208,61 @@ window.addEventListener("DOMContentLoaded", () => {
     renderMathInElement(document.body, {
       delimiters: [
         { left: "$$", right: "$$", display: true },
-        { left: "$", right: "$", display: false },
         { left: "\\[", right: "\\]", display: true },
         { left: "\\(", right: "\\)", display: false }
       ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
       throwOnError: false
     });
   }
 
-  // 1. Monte Carlo Simulator Init
-  updateMonteCarlo();
+  let initialized = false;
+  function startLyceum() {
+    if (initialized) return;
+    if (typeof Plotly === "undefined") {
+      setTimeout(startLyceum, 40);
+      return;
+    }
+    initialized = true;
 
-  // 2. Pricing Lab Init
-  updatePricingLab();
+    // 1. Monte Carlo Simulator Init
+    updateMonteCarlo();
 
-  // 3. Volatility Smile Init
-  solveImpliedVol();
+    // 2. Pricing Lab Init
+    updatePricingLab();
 
-  // 4. Strategy P&L Init
-  renderStrategyPL();
+    // 3. Volatility Smile Init
+    solveImpliedVol();
 
-  // 5. Quiz Init
-  initQuiz();
+    // 4. Strategy P&L Init
+    renderStrategyPL();
+
+    // 5. Quiz Init
+    initQuiz();
+  }
+
+  startLyceum();
 
   // Resizing Plotly plots on window resize
   window.addEventListener("resize", () => {
-    Plotly.Plots.resize("pricingPlot");
-    Plotly.Plots.resize("greeksPlot");
-    Plotly.Plots.resize("volSmilePlot");
-    Plotly.Plots.resize("strategyPlot");
-    drawMonteCarloCanvas();
+    if (typeof Plotly !== "undefined") {
+      Plotly.Plots.resize("pricingPlot");
+      Plotly.Plots.resize("greeksPlot");
+      Plotly.Plots.resize("volSmilePlot");
+      Plotly.Plots.resize("strategyPlot");
+      Plotly.Plots.resize("mcPlot");
+    }
   });
 });
+
+// Immediate execution fallback if DOMContentLoaded already fired
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  if (typeof updateMonteCarlo === "function") {
+    setTimeout(() => {
+      if (typeof Plotly !== "undefined") {
+        updateMonteCarlo();
+        updatePricingLab();
+      }
+    }, 100);
+  }
+}
