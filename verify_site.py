@@ -14,7 +14,8 @@ async def run_tests():
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
         page.on("pageerror", lambda err: page_errors.append(str(err)))
 
-        file_path = "file://" + os.path.abspath("Lyceum/black-scholes/index.html")
+        target = "Lyceum/black-scholes/index.html" if os.path.exists("Lyceum/black-scholes/index.html") else "index.html"
+        file_path = "file://" + os.path.abspath(target)
         print(f"Loading {file_path}...")
         await page.goto(file_path, wait_until="networkidle", timeout=30000)
         await page.wait_for_timeout(2500)
@@ -23,6 +24,11 @@ async def run_tests():
         print("Page errors on load:", page_errors)
         assert len(console_errors) == 0, f"Found console errors: {console_errors}"
         assert len(page_errors) == 0, f"Found page errors: {page_errors}"
+
+        # KaTeX rendering verification
+        katex_count = await page.locator(".katex").count()
+        print(f"KaTeX rendered elements count: {katex_count}")
+        assert katex_count > 15, f"KaTeX elements did not render properly! Count: {katex_count}"
 
         # 1. Test Module 1 Monte Carlo
         print("Testing Module 1 Monte Carlo...")
@@ -114,8 +120,9 @@ async def run_tests():
 
         # Reset viewport and capture screenshot
         await page.set_viewport_size({"width": 1440, "height": 900})
-        await page.screenshot(path="Lyceum/black-scholes/screenshot_verified.png", full_page=True)
-        print("Saved Lyceum/black-scholes/screenshot_verified.png")
+        ss_path = "Lyceum/black-scholes/screenshot_verified.png" if os.path.exists("Lyceum/black-scholes") else "screenshot_verified.png"
+        await page.screenshot(path=ss_path, full_page=True)
+        print(f"Saved {ss_path}")
 
         await browser.close()
         print("All tests passed with 0 errors!")
