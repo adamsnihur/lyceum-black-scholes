@@ -338,7 +338,7 @@ function renderMonteCarloPlot() {
     },
     xaxis2: {
       domain: [0.81, 1.0],
-      title: "Rozkład p(S_T)",
+      title: "Rozkład p(S<sub>T</sub>)",
       showgrid: true,
       gridcolor: "#f1f5f9",
       showticklabels: false,
